@@ -47,5 +47,11 @@ class VAE_Encoder(nn.Sequential):
     )
         
     def forward(self, x:torch.Tensor, noise:torch.Tensor) -> torch.Tensor:
-        
+        # x : (Batch_size, Channel, Height, width)
+        # noise : (Batch_size, out_channels, Height/8, width/8)
+        for module in self:
+            if getattr(module, "stride", None) == (2,2):
+                # (Padding left, padding right, padding_top, paddng_bottom)
+                x = F.pad(x, (0 , 1 , 0 , 1))
+            x = module(x)
         
