@@ -52,3 +52,10 @@ class VAE_ResidualBlock(nn.Module):
         x = F.silu(x)
         x = self.conv_2(x)
         return x + self.residual_layer(residue)
+    
+
+class VAE_Decoder(nn.Sequential):
+    def __init__(self):
+        super().__init__(
+            
+        )
