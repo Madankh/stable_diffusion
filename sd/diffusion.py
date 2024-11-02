@@ -83,7 +83,33 @@ class UNET_AttentionBlock(nn.Module):
         x = x.transpose(-1, -2)
 
         # Normalization + Self Attention with skin connection
-        
+        residue_short = x
+        x = self.layernorm_1(x)
+        self.attention_1(x)
+        x += residue_short
+        residue_short = x
+
+        # Normalization + Cross Attention with skip connection
+        x = self.layernorm_2(x)
+        # Cross Attention
+        self.attention_2(x, context)
+        x += residue_short
+        residue_short = x
+
+        # Normalization + FF with Geglu and skip connection
+        x = self.layernorm_3(x)
+        x , gate = self.linear_geglu_1(x).chunk(2, dim=-1)
+        x = x * F.gelu(gate)
+        x = self.linear_geglu_2(x)
+
+
+        x += residue_short
+        # (Batch_size , Height * width, Features) -> (Batch_size, Features, Height * Width)
+        x = x.view((n,c,h,w))
+        return self.conv_output(x) + residue_long
+
+
+
 
 
 
