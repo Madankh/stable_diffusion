@@ -67,4 +67,45 @@ def generate(prompt:str, uncond_prompt:str, input_image = None,
             # (Height, Width, Channel)
             input_image_tensor = torch.tensor(input_image_tensor, dtype=torch.float32)
             input_image_tensor =  rescale(input_image_tensor, (0,255), (-1, 1))
+
+            input_image_tensor = input_image_tensor.unsqueeze(0)
+            input_image_tensor = input_image_tensor.permute(0,3,1,2)
+            encoder_noise = torch.randn(latents_shape, generator=generator , device=device)
+            latents = encoder(input_image_tensor, encoder_noise)
+
+            sampler.set_strength(strength=strength)
+            latents = sampler.add_noise(latents, sampler.timesteps[0])
+
+            to_idle(encoder)
+
+        else:
+            # If we are doing text-to-image start with random noise
+            latents = torch.randn(latents_shape, generator=generator, device=device)
+        diffusion = models["diffusion"]
+        diffusion.to(device)
+
+
+        timesteps = tqdm(sampler.timesteps):
+        for i, timestep in enumerate(timesteps):
+            time_embedding = get_time_embedding(timestep).to(device)
+            model_input = latents
+
+            if do_cfg:
+                model_input = model_input.repeat(2,1,1,1)
+
+            # Model_output is the predicted noise by the UNET
+            model_output = diffusion(model_input, context, time_embedding)
+
+            if do_cfg:
+                output_cond, output_uncond = model_output.chunk(2)
+                model_output = cfg_scale * (output_cond - output_uncond) + output_uncond
+            
+            # Remove noise predicted by UNET
+            latents = sampler.step(time_embedding, latents, model_output)
+        to_idle(device)
+
+        decoder = models["decoder"]
+        decoder.to(device)
+
+        images = decoder(latents)
         
