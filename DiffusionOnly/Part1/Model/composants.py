@@ -13,7 +13,7 @@ class ConvNextBlock(nn.Module):
             mult=2, 
             time_embedding_dim=None, 
             norm=True, 
-            group=8):
+            groups=8):
         super().__init__()
         self.mlp = (
             nn.Sequential(
@@ -39,4 +39,10 @@ class ConvNextBlock(nn.Module):
             else nn.Identity()
         )
 
-        
+    def forward(self, x, time_embedding=None):
+        h = self.in_conv(x)
+        if self.mlp is not None and time_embedding is not None:
+            assert self.mlp is not None, "MLP is None"
+            h = h + rearrange(self.mlp(time_embedding), "b c -> b c 1 1")
+        h = self.block(h)
+        return h + self.residual_conv(x)
