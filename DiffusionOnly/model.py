@@ -69,4 +69,16 @@ class DiffusionModel(nn.Module):
             x = pre_scale * (x - e_scale * e_hat) + post_sigma
             return x
     
+    def training_step(self, batch, batch_idx):
+        loss = self.get_loss(batch, batch_idx)
+        self.log("train/loss", loss)
+        return loss
+    
+    def validation_step(self, batch, batch_idx):
+        loss = self.get_loss(batch,batch_idx)
+        self.log("val/loss", loss)
+        return
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=2e-4)
+        return optimizer
     
