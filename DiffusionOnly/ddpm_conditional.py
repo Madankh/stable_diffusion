@@ -61,6 +61,40 @@ class Diffusion:
             x = (x  * 255).type(torch.uint8)
             return x
 
+    def sample_ddim(self, model, n, labels, cfg_scale=3):
+        logging.info(f"Sampling {n} new images with DDIM....")
+        model.eval()
+        with torch.no_grad():
+            x = torch.randn((n, 3, self.img_size, self.img_size)).to(self.device)  # Start with Gaussian noise
+            for i in tqdm(reversed(range(1, self.noise_steps)), position=0):
+                t = (torch.ones(n) * i).long().to(self.device)
+                predicted_noise = model(x, t, labels)
+    
+                # Conditional Guidance (CFG)
+                if cfg_scale > 0:
+                    uncond_predicted_noise = model(x, t, None)
+                    predicted_noise = torch.lerp(uncond_predicted_noise, predicted_noise, cfg_scale)
+    
+                # DDIM Update Rule
+                alpha = self.alpha[t][:, None, None, None]
+                alpha_hat = self.alpha_hat[t][:, None, None, None]
+                
+                # Calculate the predicted x_0 (clean image)
+                x0_pred = (x - predicted_noise * torch.sqrt(1 - alpha_hat)) / torch.sqrt(alpha)
+    
+                # Update x deterministically
+                if i > 1:
+                    next_alpha_hat = self.alpha_hat[(t - 1).clamp(min=0)][:, None, None, None]
+                    x = torch.sqrt(next_alpha_hat) * x0_pred + torch.sqrt(1 - next_alpha_hat) * predicted_noise
+                else:
+                    x = x0_pred  # Final step
+    
+            model.train()
+            x = (x.clamp(-1, 1) + 1) / 2  # Normalize to [0, 1]
+            x = (x * 255).type(torch.uint8)  # Convert to uint8
+            return x
+
+
 
 def train(args):
     setup_logging(args.run_name)

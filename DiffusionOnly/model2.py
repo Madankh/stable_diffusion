@@ -130,7 +130,7 @@ def launch():
     args.epochs = 500
     args.batch_size = 12
     args.image_size = 64
-    args.dataset_path = r"D:\AI\stable_diffusion\DiffusionOnly\archive/cifar10-32"
+    args.dataset_path = r"D:\AI\stable_diffusion\DiffusionOnly\archive/cifar10-32\train"
     args.device = "cuda"
     args.lr = 3e-4
     train(args)
